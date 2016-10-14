@@ -54,7 +54,7 @@ var webpackConfig = module.exports = {
       helpers.createSourceLoader({
         happy: { id: 'js' },
         test: /\.js$/,
-        loaders: ['react-hot-loader/webpack', 'babel?' + JSON.stringify(babelLoaderQuery), 'eslint-loader']
+        loaders: ['babel?' + JSON.stringify(babelLoaderQuery), 'eslint-loader']
       }),
     ]
   },
