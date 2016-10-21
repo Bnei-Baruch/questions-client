@@ -74,9 +74,9 @@ class Connection {
 
   sendQuestion({ name, from, message } = {}) {
     if (this.isWs()) {
-      return this.sendSocketMessage(createSocketMessage('sendQuestion', { name, from, message }));
+      return this.sendSocketMessage(this.createSocketMessage('sendQuestion', { name, from, message }));
     } else if (this.isPolling()) {
-      return fetch(`${apiUrl}/sendQuestion`, {
+      return fetch(`${this.apiUrl}/sendQuestion`, {
         method: 'POST',
         body: JSON.stringify({ name, from, message })
       }).then(response => response.json())
@@ -91,9 +91,9 @@ class Connection {
 
   getQuestions() {
     if (this.isWs()) {
-      return this.sendSocketMessage(createSocketMessage('getQuestions'))
+      return this.sendSocketMessage(this.createSocketMessage('getQuestions'))
     } else if (this.isPolling()) {
-      return fetch(`${apiUrl}/getQuestions`, {
+      return fetch(`${this.apiUrl}/getQuestions`, {
         method: 'GET',
       }).then(response => response.json())
       .then(data => {
