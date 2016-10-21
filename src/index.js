@@ -7,32 +7,15 @@ class QuestionsClient {
       return new QuestionsClient(options);
     }
 
-    this.connection = new Connection();
-
-    this.pollInterval = options.pollInterval || defaults.pollInterval;
+    this.connection = new Connection(options);
   }
 
   sendQuestion({ name, from, message } = {}) {
-    return fetch(`${apiUrl}/sendQuestion`, {
-      method: 'POST',
-      body: JSON.stringify({ name, from, message })
-    }).then(response => response.json())
-    .then(data => {
-      console.log(data);
-    }).catch(error => {
-      console.log(error);
-    });
+    return this.connection.sendQuestion({ name, from, message});
   }
 
   getQuestions() {
-    return fetch(`${apiUrl}/getQuestions`, {
-      method: 'GET',
-    }).then(response => response.json())
-    .then(data => {
-      console.log(data);
-    }).catch(error => {
-      console.log(error);
-    });
+    return this.connection.getQuestions();
   }
 }
 
