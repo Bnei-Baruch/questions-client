@@ -1,31 +1,34 @@
 import warning from 'warning';
 
-const MODE_WS = 'MODE_WS';
-const MODE_POLLING = 'MODE_POLLING';
+export const MODE_WS = 'MODE_WS';
+export const MODE_REST = 'MODE_REST';
 
 function isWebSocketSupported() {
   return !!(window && window.WebSocket);
 }
 
-const defaults = {
-  pollInterval: 10 * 1000, // 10 seconds
-  connectionMode: MODE_POLLING
-};
+function notifyConnectionChange(connection, newConnectionMode) {
+  const oldConnectionMode = connection.connectionMode;
+  connection.connectionMode = newConnectionMode;
+  if (oldConnectionMode !== newConnectionMode) {
+    connection.onConnectionChange(newConnectionMode);
+  }
+}
 
 class Connection {
   constructor(options, callbacks) {
     this.apiUrl = options.apiUrl || new Error('Must provide a url for the backend api');
     this.socketUrl = options.socketUrl || this.apiUrl;
-    this.pollInterval = options.pollInterval || defaults.pollInterval;
     this.callbackMap = {};
     this.callbacks = callbacks;
+    this.onConnectionChange = options.onConnectionChange;
 
     const WebSocket = options.ws || (isWebSocketSupported() ? window.WebSocket : null);
 
     if (WebSocket) {
-      this.useWs(WebSocket);
+      this.useWS(WebSocket);
     } else {
-      this.usePolling();
+      this.useREST();
     }
   }
 
@@ -37,46 +40,34 @@ class Connection {
     }
   }
 
-  useWs(WebSocket) {
-    if (this.socket && this.socket.readyState === 1) {
+  useWS(WebSocket) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.close();
     }
 
     const socket = new WebSocket(`ws://${this.socketUrl}`);
-    socket.onerror = () => this.usePolling();
+    socket.onerror = () => this.useREST();
     socket.onmessage = (event) => {
       const responseData = JSON.parse(event.data);
       this.triggerCallback(responseData.type, responseData.data);
     };
-    socket.onclose = () => this.usePolling();
+    socket.onclose = () => this.useREST();
 
     this.socket = socket;
-    this.setMode(MODE_WS);
+
+    notifyConnectionChange(this, MODE_WS);
   }
 
-  usePolling() {
-    // TODO: use polling!
-    this.setMode(MODE_POLLING);
+  useREST() {
+    notifyConnectionChange(this, MODE_REST);
   }
 
-  isWs() {
+  isWS() {
     return this.connectionMode === MODE_WS;
   }
 
-  isPolling() {
-    return this.connectionMode === MODE_POLLING;
-  }
-
-  setMode(mode) {
-    switch (mode) {
-      case MODE_WS:
-      case MODE_POLLING:
-        this.connectionMode = mode;
-        break;
-      default:
-        warning(false, `bad connection mode supplied (${mode}): setting default mode: ${defaults.connectionMode}`);
-        this.connectionMode = defaults.connectionMode;
-    }
+  isREST() {
+    return this.connectionMode === MODE_REST;
   }
 
   createSocketMessage(type, data) {

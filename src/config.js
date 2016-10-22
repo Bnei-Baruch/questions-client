@@ -13,5 +13,8 @@ module.exports = Object.assign({
   host: process.env.HOST || 'localhost',
   port: process.env.PORT,
   apiHost: process.env.APIHOST || 'localhost',
-  apiPort: process.env.APIPORT
+  apiPort: process.env.APIPORT,
+  client: {
+    pollInterval: 10 * 1000 // 10 seconds
+  }
 }, environment);
