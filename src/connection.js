@@ -3,11 +3,6 @@ import warning from 'warning';
 const MODE_WS = 'MODE_WS';
 const MODE_POLLING = 'MODE_POLLING';
 
-// TODO: make websocket fallback to polling/rest when it fails
-// TODO: seperate request and response
-// TODO: seperate logic functions from Connection
-// TODO: add socket events
-
 function isWebSocketSupported() {
   return !!(window && window.WebSocket);
 }
@@ -18,49 +13,69 @@ const defaults = {
 };
 
 class Connection {
-  constructor(options) {
+  constructor(options, callbacks) {
     this.apiUrl = options.apiUrl || new Error('Must provide a url for the backend api');
     this.socketUrl = options.socketUrl || this.apiUrl;
     this.pollInterval = options.pollInterval || defaults.pollInterval;
+    this.callbackMap = {};
+    this.callbacks = callbacks;
 
     const WebSocket = options.ws || (isWebSocketSupported() ? window.WebSocket : null);
 
     if (WebSocket) {
-      this.socket = new WebSocket(`ws://${this.socketUrl}`);
-    }
-
-    if (this.socket) {
-      this.useWs();
+      this.useWs(WebSocket);
     } else {
       this.usePolling();
     }
   }
 
-  useWs() {
+  registerCallback(path, cb) {
+    if (this.callbackMap[path]) {
+      this.callbackMap[path].push(cb);
+    } else {
+      this.callbackMap[path] = [cb];
+    }
+  }
+
+  useWs(WebSocket) {
+    if (this.socket && this.socket.readyState === 1) {
+      this.socket.close();
+    }
+
+    const socket = new WebSocket(`ws://${this.socketUrl}`);
+    socket.onerror = () => this.usePolling();
+    socket.onmessage = (event) => {
+      const responseData = JSON.parse(event.data);
+      this.triggerCallback(responseData.type, responseData.data);
+    };
+    socket.onclose = () => this.usePolling();
+
+    this.socket = socket;
     this.setMode(MODE_WS);
   }
 
   usePolling() {
-    this.setMode(MODE_POLLING)
+    // TODO: use polling!
+    this.setMode(MODE_POLLING);
   }
 
   isWs() {
-    return this.mode === MODE_WS;
+    return this.connectionMode === MODE_WS;
   }
 
   isPolling() {
-    return this.mode === MODE_POLLING;
+    return this.connectionMode === MODE_POLLING;
   }
 
   setMode(mode) {
     switch (mode) {
       case MODE_WS:
       case MODE_POLLING:
-        this.mode = mode;
+        this.connectionMode = mode;
         break;
       default:
         warning(false, `bad connection mode supplied (${mode}): setting default mode: ${defaults.connectionMode}`);
-        this.mode = defaults.connectionMode;
+        this.connectionMode = defaults.connectionMode;
     }
   }
 
@@ -72,36 +87,33 @@ class Connection {
     return this.socket.send(message);
   }
 
-  sendQuestion({ name, from, message } = {}) {
-    if (this.isWs()) {
-      return this.sendSocketMessage(this.createSocketMessage('sendQuestion', { name, from, message }));
-    } else if (this.isPolling()) {
-      return fetch(`${this.apiUrl}/sendQuestion`, {
-        method: 'POST',
-        body: JSON.stringify({ name, from, message })
-      }).then(response => response.json())
-      .then(data => {
-        console.log(data);
-      }).catch(error => {
-        console.log(error);
-      });
+  triggerCallback(cbName, data) {
+    const cb = this.callbacks[cbName];
+    if (cb) {
+      return cb(data);
     }
 
+    warning(false, `calling callback ${cbName}, but it does not exist`);
+    return null;
   }
 
-  getQuestions() {
+  request(path, data, meta) {
     if (this.isWs()) {
-      return this.sendSocketMessage(this.createSocketMessage('getQuestions'))
-    } else if (this.isPolling()) {
-      return fetch(`${this.apiUrl}/getQuestions`, {
-        method: 'GET',
-      }).then(response => response.json())
-      .then(data => {
-        console.log(data);
-      }).catch(error => {
-        console.log(error);
-      });
+      return this.sendSocketMessage(this.createSocketMessage(path, data));
     }
+
+    return fetch(
+      path,
+      Object.assign({}, meta, { body: JSON.stringify(data) })
+    ).then(response => response.json())
+    .then(response => {
+      if (response.status === 200) {
+        const callbackNames = [].concat(this.callbackMap(path) || []);
+        for (const cbName of callbackNames) {
+          this.triggerCallback(cbName, response.body);
+        }
+      }
+    });
   }
 }
 

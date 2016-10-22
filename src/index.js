@@ -7,15 +7,21 @@ class QuestionsClient {
       return new QuestionsClient(options);
     }
 
-    this.connection = new Connection(options);
+    this.connection = new Connection(options, {
+      onQuestionApproved: options.onQuestionApproved,
+      onQuestionsReceived: options.onQuestionsReceived
+    });
+
+    this.connection.registerCallback('sendQuestion', 'onQuestionApproved');
+    this.connection.registerCallback('getQuestions', 'onQuestionsReceived');
   }
 
   sendQuestion({ name, from, message } = {}) {
-    return this.connection.sendQuestion({ name, from, message});
+    return this.connection.request('sendQuestion', { name, from, message }, { method: 'POST' });
   }
 
   getQuestions() {
-    return this.connection.getQuestions();
+    return this.connection.request('getQuestions', null, { method: 'GET' });
   }
 }
 
