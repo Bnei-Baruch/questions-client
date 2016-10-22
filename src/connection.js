@@ -7,14 +7,6 @@ function isWebSocketSupported() {
   return !!(window && window.WebSocket);
 }
 
-function notifyConnectionChange(connection, newConnectionMode) {
-  const oldConnectionMode = connection.connectionMode;
-  connection.connectionMode = newConnectionMode;
-  if (oldConnectionMode !== newConnectionMode) {
-    connection.onConnectionChange(newConnectionMode);
-  }
-}
-
 class Connection {
   constructor(options, callbacks) {
     this.apiUrl = options.apiUrl || new Error('Must provide a url for the backend api');
@@ -23,10 +15,10 @@ class Connection {
     this.callbacks = callbacks;
     this.onConnectionChange = options.onConnectionChange;
 
-    const WebSocket = options.ws || (isWebSocketSupported() ? window.WebSocket : null);
+    this.WebSocketImplementation = options.ws || (isWebSocketSupported() ? window.WebSocket : null);
 
-    if (WebSocket) {
-      this.useWS(WebSocket);
+    if (this.WebSocketImplementation) {
+      this.useWS();
     } else {
       this.useREST();
     }
@@ -40,12 +32,13 @@ class Connection {
     }
   }
 
-  useWS(WebSocket) {
+  startWS() {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.onclose = null;
       this.socket.close();
     }
 
-    const socket = new WebSocket(`ws://${this.socketUrl}`);
+    const socket = new this.WebSocketImplementation(`ws://${this.socketUrl}`);
     socket.onerror = () => this.useREST();
     socket.onmessage = (event) => {
       const responseData = JSON.parse(event.data);
@@ -54,12 +47,26 @@ class Connection {
     socket.onclose = () => this.useREST();
 
     this.socket = socket;
+  }
 
-    notifyConnectionChange(this, MODE_WS);
+  useWS() {
+    if (this.isWS()) {
+      return;
+    }
+
+    this.startWS();
+
+    this.connectionMode = MODE_WS;
+    this.onConnectionChange(MODE_WS);
   }
 
   useREST() {
-    notifyConnectionChange(this, MODE_REST);
+    if (this.isREST()) {
+      return;
+    }
+
+    this.connectionMode = MODE_REST;
+    this.onConnectionChange(MODE_REST);
   }
 
   isWS() {

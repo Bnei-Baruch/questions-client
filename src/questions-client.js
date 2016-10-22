@@ -20,6 +20,7 @@ class QuestionsClient {
 
     const stopPolling = () => {
       clearTimeout(this.pollHandle);
+      this.pollHandle = null;
     };
 
     const connectionOptions = {
