@@ -2,7 +2,7 @@ import config from './config';
 import Faye from 'faye';
 import { isFunction } from './utils';
 
-// TODO (yaniv): question approved should only be received on a specific channel for the user client
+// TODO (yaniv): onQuestionApproved and onQuestionsReceived should only be received on a specific channel for the user client
 
 class QuestionsClient {
   constructor(options) {
