@@ -32,7 +32,8 @@
     "no-console": "off",
     "no-alert": "off",
     "max-len": ["error", 120],
-    "indent": ["error", 2, {"SwitchCase": 1}]
+    "indent": ["error", 2, {"SwitchCase": 1}],
+    "new-cap": ["error", { "capIsNewExceptions": ["Faye.Client"] }]
   },
   "plugins": [
     "import"

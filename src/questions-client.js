@@ -1,64 +1,33 @@
-import config from './config.js';
-import Connection, { MODE_REST, MODE_WS } from './connection';
+import config from './config';
+import Faye from 'faye';
+import { isFunction } from './utils';
+
+// TODO (yaniv): question approved should only be received on a specific channel for the user client
 
 class QuestionsClient {
   constructor(options) {
-    if (!(this instanceof QuestionsClient)) {
-      return new QuestionsClient(options);
+    this.apiUrl = options.url;
+    this.client = Faye.Client(this.apiUrl, { retry: config.retry });
+
+    if (isFunction(options.onQuestionApproved)) {
+      this.client.subscribe('/onQuestionApproved', options.onQuestionApproved);
     }
 
-    this.pollInterval = options.pollInterval || config.client.pollInterval;
-    this.pollHandle = null;
-    this.lastDateReceivedNewQuestions = null;
+    if (isFunction(options.onQuestionsReceived)) {
+      this.client.subscribe('/onQuestionsReceived', options.onQuestionsReceived);
+    }
 
-    const startPolling = () => {
-      this.pollHandle = setTimeout(
-          () => this.connection.request('getNewQuestions', { since: this.lastDateReceivedNewQuestions }),
-          this.pollInterval
-        );
-    };
-
-    const stopPolling = () => {
-      clearTimeout(this.pollHandle);
-      this.pollHandle = null;
-    };
-
-    const connectionOptions = {
-      apiUrl: options.apiUrl,
-      onConnectionChange: (mode) => {
-        if (mode === MODE_REST) {
-          startPolling();
-        } else if (mode === MODE_WS) {
-          stopPolling();
-        }
-      }
-    };
-
-    const callbacks = {
-      onQuestionApproved: options.onQuestionApproved,
-      onQuestionsReceived: (data) => {
-        this.lastDateReceivedNewQuestions = Date.now();
-        options.onQuestionsReceived(data);
-      },
-      onNewQuestionsReceived: (data) => {
-        this.lastDateReceivedNewQuestions = Date.now();
-        options.onNewQuestionsReceived(data);
-      }
-    };
-
-    this.connection = new Connection(connectionOptions, callbacks);
-
-    this.connection.registerCallback('sendQuestion', 'onQuestionApproved');
-    this.connection.registerCallback('getQuestions', 'onQuestionsReceived');
-    this.connection.registerCallback('getNewQuestions', 'onNewQuestionsReceived');
+    if (isFunction(options.onNewQuestionsReceived)) {
+      this.client.subscribe('/onNewQuestionsReceived', options.onNewQuestionsReceived);
+    }
   }
 
   sendQuestion({ name, from, message } = {}) {
-    return this.connection.request('sendQuestion', { name, from, message }, { method: 'POST' });
+    return this.client.publish('/sendQuestion', { name, from, message });
   }
 
   getQuestions() {
-    return this.connection.request('getQuestions', null, { method: 'GET' });
+    return this.client.publish('/getQuestions');
   }
 }
 
