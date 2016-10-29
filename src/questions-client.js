@@ -30,11 +30,11 @@ class QuestionsClient {
   }
 
   sendQuestion({ name, from, message } = {}) {
-    return this.client.publish('/sendQuestion', { name, from, message });
+    return this.client.publish('/sendQuestion', { name, from, message }, { attempts: config.attempts });
   }
 
   getQuestions() {
-    return this.client.publish('/getQuestions');
+    return this.client.publish('/getQuestions', { attempts: config.attempts });
   }
 }
 
