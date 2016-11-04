@@ -7,6 +7,7 @@ var webpack = require('webpack');
 var assetsPath = path.resolve(__dirname, '../static/dist');
 var host = (process.env.HOST || 'localhost');
 var port = (+process.env.PORT + 1) || 3001;
+var HtmlWebpackPlugin = require('html-webpack-plugin');
 var helpers = require('./helpers');
 
 var babelrc = fs.readFileSync('./.babelrc');
@@ -67,15 +68,14 @@ var webpackConfig = module.exports = {
     extensions: ['', '.js']
   },
   plugins: [
-    // hot reload
     new webpack.HotModuleReplacementPlugin(),
     new webpack.IgnorePlugin(/webpack-stats\.json$/),
     new webpack.DefinePlugin({
       __DEVELOPMENT__: true,
       __DLLS__: process.env.WEBPACK_DLLS === '1'
     }),
-
-    helpers.createHappyPlugin('js')
+    helpers.createHappyPlugin('js'),
+    new HtmlWebpackPlugin()
   ]
 };
 
