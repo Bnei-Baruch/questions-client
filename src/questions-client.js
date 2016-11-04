@@ -7,8 +7,8 @@ import { isFunction } from './utils';
 
 class QuestionsClient {
   constructor(options) {
-    this.apiUrl = options.url;
-    const client = new Faye.Client(this.apiUrl + config.fayePrefix, { retry: config.retry });
+    this.apiUrl = options.url + config.fayePrefix;
+    const client = new Faye.Client(this.apiUrl, { retry: config.retry });
 
     if (options.ajaxOnly) {
       client.disable('websocket');

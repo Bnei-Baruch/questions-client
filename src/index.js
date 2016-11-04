@@ -1,7 +1,7 @@
 import QuestionsClient from './questions-client';
 
 const client = new QuestionsClient({
-  url: 'localhost:8000'
+  url: 'http://localhost:8000'
 });
 
 // client.client.subsrcibe('/sendQuestion', (a) => alert(a));
